@@ -1,44 +1,58 @@
 package com.kafein.weatherapp
 
-import androidx.appcompat.app.AppCompatActivity
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Geocoder
 import android.os.Bundle
-import android.os.CountDownTimer
 import android.view.View
-import android.widget.ArrayAdapter
-import android.widget.AutoCompleteTextView
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.widget.doAfterTextChanged
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.kafein.weatherapp.adapter.CityListAdapter
 import com.kafein.weatherapp.adapter.LastSearchesAdapter
 import com.kafein.weatherapp.databinding.ActivityMainBinding
 import com.kafein.weatherapp.model.LastSearches
 import com.kafein.weatherapp.model.response.CityListResponse
+import com.kafein.weatherapp.util.MY_PERMISSIONS_REQUEST_LOCATION
 import com.kafein.weatherapp.util.WeatherConstants
+import com.kafein.weatherapp.util.checkLocationPermission
+import com.kafein.weatherapp.util.requestLocationPermission
 import com.orhanobut.hawk.Hawk
 import kotlinx.android.synthetic.main.weather_bottom_sheet.view.*
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
+import java.util.*
+import kotlin.collections.ArrayList
+
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var viewModel: CitySearchViewModel
     private lateinit var binding: ActivityMainBinding
     private val cityListAdapter = CityListAdapter()
     private val lastSearchesAdapter = LastSearchesAdapter()
     private var cityListTemp: ArrayList<CityListResponse.CityListResponseItem> = arrayListOf()
     var searchList: ArrayList<LastSearches> = arrayListOf()
+    private var myLocationCityName: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         val view = binding.root
         setContentView(view)
-
         Hawk.init(this).build()
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        this.checkLocationPermission()
+
 
         viewModel = ViewModelProvider(this).get(CitySearchViewModel::class.java)
         binding.progress.visibility = View.VISIBLE
@@ -98,6 +112,7 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.citySearchLiveData.observe(this, {
             it.getOrNull(0)?.let {
+                myLocationCityName = it.localizedName.toString()
                 it.key?.let { key -> viewModel.weatherInfo(key) }
             }
         })
@@ -105,15 +120,16 @@ class MainActivity : AppCompatActivity() {
         viewModel.weatherInfoLiveData.observe(this,{
             it.getOrNull(0)?.let {
                 this.runOnUiThread {
-                    weatherInfoBottomSheet(it.weatherText)
+                    weatherInfoBottomSheet(myLocationCityName, it.weatherText)
                 }
             }
         })
     }
 
-    private fun weatherInfoBottomSheet(weatherText: String?) {
+    private fun weatherInfoBottomSheet(cityName: String = "", weatherText: String?) {
         val view: View = layoutInflater.inflate(R.layout.weather_bottom_sheet, null)
         val bottomSheetDialog = BottomSheetDialog(this)
+        view.tv_weather_title.text = view.context.getString(R.string.for_city_weather, cityName)
         view.tv_weather.text = weatherText
         bottomSheetDialog.setContentView(view)
         bottomSheetDialog.show()
@@ -143,6 +159,46 @@ class MainActivity : AppCompatActivity() {
                 searchList = Hawk.get(WeatherConstants.LAST_SEARCH_LIST)
                 binding.rvLastSearches.visibility = View.VISIBLE
                 lastSearchesAdapter.initializeValues(Hawk.get(WeatherConstants.LAST_SEARCH_LIST))
+            }
+        }
+    }
+
+    private fun getLocationCity(){
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            fusedLocationClient.lastLocation.addOnSuccessListener(this) { location ->
+                if (location != null) {
+                    val gcd = Geocoder(this, Locale.getDefault())
+                    val addresses = gcd.getFromLocation(location.latitude, location.longitude, 1)
+                    if (addresses.size > 0) {
+                        myLocationCityName = addresses[0].adminArea.toString()
+                        viewModel.searchCity(addresses[0].adminArea.toString())
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            MY_PERMISSIONS_REQUEST_LOCATION -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    if (ContextCompat.checkSelfPermission(
+                            this,
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        getLocationCity()
+                    }
+
+                } else {
+                    Toast.makeText(this, "permission denied", Toast.LENGTH_LONG).show()
+                }
+                return
             }
         }
     }

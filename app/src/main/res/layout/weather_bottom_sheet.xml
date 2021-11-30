@@ -7,11 +7,11 @@
     android:layout_height="match_parent">
 
     <TextView
+        android:id="@+id/tv_weather_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textSize="20dp"
         android:layout_margin="12dp"
-        android:text="HAVA DURUMU"
         android:gravity="center"/>
 
     <TextView
