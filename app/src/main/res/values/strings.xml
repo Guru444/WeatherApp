@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">WeatherApp</string>
+    <string name="city_info">Şehir :  %1$s - Ülke : %2$s - Bölge : %3$s </string>
+
+</resources>
