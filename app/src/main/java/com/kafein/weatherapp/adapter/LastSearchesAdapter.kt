@@ -10,6 +10,8 @@ import kotlinx.android.synthetic.main.last_searches_item_layout.view.*
 
 class LastSearchesAdapter(): RecyclerView.Adapter<LastSearchesAdapter.ItemViewHolder>() {
     var items: ArrayList<LastSearches> = arrayListOf()
+    var lastSearchItemClickListener: (String) -> Unit = {}
+
 
     fun initializeValues(items: ArrayList<LastSearches>){
         this.items = items
@@ -17,12 +19,11 @@ class LastSearchesAdapter(): RecyclerView.Adapter<LastSearchesAdapter.ItemViewHo
         notifyDataSetChanged()
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemViewHolder {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
         ItemViewHolder(
             LayoutInflater.from(parent.context)
                 .inflate(R.layout.last_searches_item_layout, parent, false)
         )
-    }
 
     override fun onBindViewHolder(holder: LastSearchesAdapter.ItemViewHolder, position: Int) {
         holder.bind(items[position])
@@ -33,6 +34,9 @@ class LastSearchesAdapter(): RecyclerView.Adapter<LastSearchesAdapter.ItemViewHo
     inner class ItemViewHolder(view: View): RecyclerView.ViewHolder(view) {
         fun bind (itemModel: LastSearches){
             itemView.item_title.text = itemModel.lastSearchTitle
+            itemView.setOnClickListener {
+                lastSearchItemClickListener(itemModel.lastSearchTitle)
+            }
         }
     }
 }
