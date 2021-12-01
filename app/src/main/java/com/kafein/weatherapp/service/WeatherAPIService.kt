@@ -1,7 +1,6 @@
 package com.kafein.weatherapp
 
 
-import com.kafein.weatherapp.WeatherAPI
 import com.kafein.weatherapp.model.response.CityListResponse
 import com.kafein.weatherapp.model.response.SearchCityResultResponse
 import com.kafein.weatherapp.model.response.WeatherResponse
